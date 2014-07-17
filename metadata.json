@@ -2,5 +2,5 @@
   "manifestURL": "https://loop.services.mozilla.com",
   "removable": false,
   "type": "privileged",
-  "external": false
+  "external": true
 }
