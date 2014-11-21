@@ -329,7 +329,8 @@
       var that = this;
       _session.on({
         streamPropertyChanged: function(event) {
-          if (event.stream && event.stream.streamId !== _subscriber.stream.streamId) {
+          if (_subscriber && event.stream &&
+              event.stream.streamId !== _subscriber.stream.streamId) {
             return;
           }
 
@@ -417,21 +418,72 @@
                 }
               }
             );
+
           _subscriber.on({
             loaded: function() {
               _perfDebug && PerfLog.log(_perfBranch,
                 'Received "loaded" event from remote stream');
-              CallScreenUI.setCallStatus('connected');
+
+              var remoteVideoContainer = document.getElementById('fullscreen-video');
+              var remoteVideoElement = remoteVideoContainer.querySelector('video');
+              var interval, timeout;
+
+              function setCallStatus() {
+                window.clearInterval(interval);
+                window.clearTimeout(timeout);
+                CallScreenUI.setCallStatus('connected');
+              }
+
+              function timeoutFired() {
+                console.log("DCB 5000 timeout reached"); 
+                PerfLog.log(_perfBranch, 'connected timeout reached');
+                setCallStatus();
+              }
+
+              timeout = window.setTimeout(timeoutFired, 5000);
+
+              remoteVideoElement.addEventListener("mozaudioavailable", function() { 
+                  console.log("DCB mozaudioavailable"); 
+                  PerfLog.log(_perfBranch, 'mozaudioavailable received on video element');
+                  }, 
+                true);
+              remoteVideoElement.addEventListener("canplay", function() { 
+                  console.log("DCB canplay"); 
+                  PerfLog.log(_perfBranch, 'canplay received on video element');
+                  }, 
+                true);
+              remoteVideoElement.addEventListener("canplaythrough", function() { 
+                  console.log("DCB canplaythrough"); 
+                  PerfLog.log(_perfBranch, 'canplaythrough received on video element');
+                  }, 
+                true);
+              remoteVideoElement.addEventListener("loadeddata", function() { 
+                  console.log("DCB loadeddata"); 
+                  PerfLog.log(_perfBranch, 'loadeddata received on video element');
+                  }, 
+                true);
+              remoteVideoElement.addEventListener("playing", function() { 
+                  console.log("DCB playing"); 
+                  PerfLog.log(_perfBranch, 'playing received on video element');
+                  }, 
+                true);
+
+
+              interval = window.setInterval(function() {
+                console.log("DCB mozPaintedFrames " + remoteVideoElement.mozPaintedFrames)
+                if (remoteVideoElement.mozPaintedFrames == 0) {
+                  PerfLog.log(_perfBranch, 'Video Element not painting frames');
+                  return;
+                }
+                PerfLog.log(_perfBranch, 'Video Element Started painting frames');
+                setCallStatus();
+              }, 100);
 
               if (_perfDebug) {
                 var meanFPS = 0;
                 var videoWidth = 640;
                 var videoHeight = 480;
                 var previousMozFrames = 0;
-                var remoteVideoContainer =
-                  document.getElementById('fullscreen-video');
-                var remoteVideoElement =
-                  remoteVideoContainer.querySelector('video');
 
                 if (remoteVideoElement) {
                   window.setInterval(function () {
