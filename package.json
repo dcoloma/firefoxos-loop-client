@@ -28,7 +28,7 @@
     "grunt-html-build": "~0.3.2",
     "grunt-firefoxos": "git://github.com/dcoloma/grunt-firefoxos#stop-and-launch",
     "grunt-firefoxos-utils": "git://github.com/dcoloma/grunt-firefoxos-utils",
-    "grunt-git-describe": "~2.3.2",
+    "grunt-gitinfo": "~0.1.7",
     "grunt-bower-task": "~0.4.0",
     "grunt-contrib-compress": "~0.12.0"
   }

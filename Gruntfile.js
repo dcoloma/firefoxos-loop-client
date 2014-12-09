@@ -14,6 +14,7 @@ module.exports = function(grunt) {
     'grunt-firefoxos',
     'grunt-firefoxos-utils',
     'grunt-git-describe',
+    'grunt-gitinfo',
     'grunt-html-build',
     'grunt-mocha'
   ].forEach(grunt.loadNpmTasks);
@@ -108,6 +109,12 @@ module.exports = function(grunt) {
       }
     },
 
+    'gitinfo': {
+      options: {
+        cwd: '.'
+      }
+    },
+
     'git-describe': {
       options: {
         prop: 'meta.revision',
@@ -169,15 +176,16 @@ module.exports = function(grunt) {
     'mocha'
   ]);
 
-  grunt.registerTask('saveRevision', function() {
-    // By default we enter the unknown string (in case someone uses a zip)
-    // if this is git repo, it will be overwritten later on
-    grunt.file.write('build/js/version.js', "Version = { id: 'unknown' };");
-    grunt.event.once('git-describe', function (rev) {
-      grunt.file.write('build/js/version.js', 'Version = { id: \'' +
-        rev.object + '\' };');
-    });
-    grunt.task.run('git-describe');
+  grunt.registerTask('saveRevision', 'saveRevision', ['gitinfo', 'gitinfo-get']);
+
+  grunt.registerTask('gitinfo-get', function(){
+    var branch = grunt.config('gitinfo.local.branch.current.name');
+    var commit = grunt.config('gitinfo.local.branch.current.shortSHA');
+
+    grunt.file.write('build/js/version.js', 'Version = { id: \'' + 
+                     grunt.config('gitinfo.local.branch.current.name') + '/' + 
+                     grunt.config('gitinfo.local.branch.current.shortSHA') + 
+                     ' with ' + grunt.config.get('origin') + ' origin\' };');
   });
 
   grunt.registerTask('configureProduction', function() {
@@ -295,9 +303,11 @@ module.exports = function(grunt) {
     switch (loopServer) {
       case "stage":
         appOrigin = "loop.stage.mozaws.net";
+        manifest.name = "Hello Stage";
         break;
       case "development":
         appOrigin = "loop-dev.stage.mozaws.net";
+        manifest.name = "Hello Dev";
         break;
       case "production":
         appOrigin = "loop.services.mozilla.com";
@@ -310,6 +320,7 @@ module.exports = function(grunt) {
         var serverUrl = url.parse(loopServer);
         if (serverUrl.hostname != null){
           appOrigin = serverUrl.hostname;
+          manifest.name = "Hello " + hostname;
           if (serverUrl.port != null) {
             port = ":" + serverUrl.port;
           }
@@ -391,8 +402,8 @@ module.exports = function(grunt) {
   grunt.registerTask('build', 'Build app for dev', [
     'bower:install',
     'copy:build',
-    'saveRevision',
     'configure',
+    'saveRevision',
     'compress:release',
     'ffospush:app'
   ]);
@@ -401,8 +412,8 @@ module.exports = function(grunt) {
     'bower:install',
     'copy:build',
     'configureProduction',
-    'saveRevision',
     'configure',
+    'saveRevision',
     'compress:release',
     'ffospush:app'
   ]);
@@ -411,8 +422,8 @@ module.exports = function(grunt) {
     'bower:install',
     'copy:build',
     'configureDevelopment',
-    'saveRevision',
     'configure',
+    'saveRevision',
     'compress:release',
     'ffospush:app'
   ]);
@@ -421,9 +432,9 @@ module.exports = function(grunt) {
     'clean',
     'copy:build',
     'bower:install',
+    'configure',
     'saveRevision',
     'test',
-    'configure',
     'compress:release',
     'copy:deliver',
     'embed-in-gaia'
@@ -434,9 +445,9 @@ module.exports = function(grunt) {
     'copy:build',
     'configureProduction',
     'bower:install',
+    'configure',
     'saveRevision',
     'test',
-    'configure',
     'compress:release',
     'copy:deliver',
     'embed-in-gaia'
@@ -447,9 +458,9 @@ module.exports = function(grunt) {
     'copy:build',
     'configureDevelopment',
     'bower:install',
+    'configure',
     'saveRevision',
     'test',
-    'configure',
     'compress:release',
     'copy:deliver',
     'embed-in-gaia'
