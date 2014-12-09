@@ -12,6 +12,7 @@ module.exports = function(grunt) {
     'grunt-contrib-copy',
     'grunt-bower-task',
     'grunt-firefoxos',
+    'grunt-firefoxos-utils',
     'grunt-git-describe',
     'grunt-html-build',
     'grunt-mocha'
@@ -140,11 +141,22 @@ module.exports = function(grunt) {
 
     ffospush: {
       app: {
-        appId: 'loop.services.mozilla.org',
+        appId: '<%= grunt.config.get("origin") %>',
         zip: 'application.zip'
       }
-    }
+    },
 
+    ffosstop: {
+      app: {
+        appId: '<%= grunt.config.get("origin") %>'
+      }
+    },
+
+    ffoslaunch: {
+      app: {
+        appId: '<%= grunt.config.get("origin") %>'
+      }
+    }
   });
 
   grunt.registerTask('test', 'Launch tests in shell with PhantomJS', [
@@ -362,6 +374,19 @@ module.exports = function(grunt) {
     grunt.file.write(manifestFile, JSON.stringify(manifest, null, 2));
   });
 
+  grunt.registerTask('remove-prompt', 'Avoid prompting for debuggin', [
+    'ffosgetprefs',
+    'checkRemoteDebug',
+    'ffosstopb2g',
+    'ffossetprefs',
+    'ffosstartb2g'
+  ]);
+
+  grunt.registerTask('killbuild', 'Build app for dev', [
+    'ffosstop',
+    'build',
+    'ffoslaunch'
+  ]);
 
   grunt.registerTask('build', 'Build app for dev', [
     'bower:install',
