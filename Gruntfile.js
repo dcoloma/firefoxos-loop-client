@@ -13,8 +13,7 @@ module.exports = function(grunt) {
     'grunt-bower-task',
     'grunt-firefoxos',
     'grunt-gitinfo',
-    'grunt-html-build',
-    'grunt-mocha'
+    'grunt-mocha-slimer'
   ].forEach(grunt.loadNpmTasks);
 
   var TEST_HEADER = grunt.file.read('test/test_header.html');
@@ -38,7 +37,7 @@ module.exports = function(grunt) {
       }
     },
 
-    mocha: {
+    mocha_slimer: {
       all: {
         options: {
           run: true,
@@ -55,7 +54,10 @@ module.exports = function(grunt) {
           }),
           bail: true,
           logErrors: true,
-          reporter: 'Spec'
+          // Please note that the Spec reporter does *not* dump the stack on errors.
+          // If you need the stack, use the JSON reporter.
+          reporter: grunt.option('testReporter') || 'Spec',
+          xvfb: true
         }
       }
     },
@@ -139,7 +141,7 @@ module.exports = function(grunt) {
   grunt.registerTask('test', 'Launch tests in shell with PhantomJS', [
     'clean:server',
     'connect:test',
-    'mocha',
+    'mocha_slimer',
     'clean:postTest'
   ]);
 
@@ -156,8 +158,7 @@ module.exports = function(grunt) {
     } else {
       grunt.file.write('build/js/version.js', 'Version = { id: \'' +
                      grunt.config('gitinfo.local.branch.current.name') + '/' +
-                     grunt.config('gitinfo.local.branch.current.shortSHA') +
-                     ' with ' + grunt.config.get('origin') + ' origin\' };');
+                     grunt.config('gitinfo.local.branch.current.shortSHA') + '\' };');
     }
   });
 
@@ -272,6 +273,7 @@ module.exports = function(grunt) {
     var protocol = "https";
     switch (loopServer) {
       case "stage":
+        console.log("stage")
         appOrigin = "loop.stage.mozaws.net";
         manifest.name = "Hello Stage" 
         var locales = manifest.locales;
@@ -363,19 +365,15 @@ module.exports = function(grunt) {
     grunt.file.write(manifestFile, JSON.stringify(manifest, null, 2));
   });
 
-  grunt.registerTask('killbuild', 'Kill app, build and launch', [
-    'ffosstop:app',
-    'buildDevelopment',
-    'ffoslaunch:app'
-  ]);
-
   grunt.registerTask('build', 'Build app for dev', [
     'bower:install',
     'copy:build',
     'configure',
+    'ffosstop:app',
     'getVersion',
     'compress:release',
-    'ffospush:app'
+    'ffospush:app',
+    'ffoslaunch:app'
   ]);
 
   grunt.registerTask('buildProduction', 'Build app for dev', [
