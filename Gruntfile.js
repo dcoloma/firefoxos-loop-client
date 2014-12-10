@@ -12,7 +12,7 @@ module.exports = function(grunt) {
     'grunt-contrib-copy',
     'grunt-bower-task',
     'grunt-firefoxos',
-    'grunt-git-describe',
+    'grunt-gitinfo',
     'grunt-html-build',
     'grunt-mocha'
   ].forEach(grunt.loadNpmTasks);
@@ -87,12 +87,10 @@ module.exports = function(grunt) {
       }
     },
 
-    'git-describe': {
+    'gitinfo': {
       options: {
-        prop: 'meta.revision',
-        failOnError: false
-      },
-      me: {}
+        cwd: '.'
+      }
     },
 
     bower: {
@@ -120,11 +118,22 @@ module.exports = function(grunt) {
 
     ffospush: {
       app: {
-        appId: 'loop.services.mozilla.org',
+        appId: '<%= grunt.config.get("origin") %>',
         zip: 'application.zip'
       }
-    }
+    },
 
+    ffosstop: {
+      app: {
+        appId: '<%= grunt.config.get("origin") %>'
+      }
+    },
+
+    ffoslaunch: {
+      app: {
+        appId: '<%= grunt.config.get("origin") %>',
+      }
+    }
   });
 
   grunt.registerTask('test', 'Launch tests in shell with PhantomJS', [
@@ -134,15 +143,22 @@ module.exports = function(grunt) {
     'clean:postTest'
   ]);
 
-  grunt.registerTask('saveRevision', function() {
-    // By default we enter the unknown string (in case someone uses a zip)
-    // if this is git repo, it will be overwritten later on
-    grunt.file.write('build/js/version.js', "Version = { id: 'unknown' };");
-    grunt.event.once('git-describe', function (rev) {
+  grunt.registerTask('getVersion', 'Fills-in version.js with version info', [
+    'gitinfo',
+    'writeVersionFile'
+  ]);
+
+  grunt.registerTask('writeVersionFile', function() {
+    var version = grunt.option('loopVersion');
+    if (version != undefined) {
+      grunt.file.write('build/js/version.js', 'Version = { id: \'' + version + 
+                 ' ('+ grunt.config('gitinfo.local.branch.current.shortSHA') + ')\' }');
+    } else {
       grunt.file.write('build/js/version.js', 'Version = { id: \'' +
-        rev.object + '\' };');
-    });
-    grunt.task.run('git-describe');
+                     grunt.config('gitinfo.local.branch.current.name') + '/' +
+                     grunt.config('gitinfo.local.branch.current.shortSHA') +
+                     ' with ' + grunt.config.get('origin') + ' origin\' };');
+    }
   });
 
   grunt.registerTask('configureProduction', function() {
@@ -245,9 +261,6 @@ module.exports = function(grunt) {
       config = config.replace("version: '" + VERSION_DEF_VAL + "',", 
                               "version: '" + version + "',");
       manifest.version = version;
-      // And we write the same version in the version.js
-      grunt.file.write('build/js/version.js', 'Version = { id: \'' + 
-                       version + '\' }');
     }
 
     // Configure loop server, require changes in config.js for server config 
@@ -260,9 +273,17 @@ module.exports = function(grunt) {
     switch (loopServer) {
       case "stage":
         appOrigin = "loop.stage.mozaws.net";
+        manifest.name = "Hello Stage" 
+        var locales = manifest.locales;
+        for (var i in locales) {
+          locales[i].name = "Hello Stage"
+        }
         break;
       case "development":
         appOrigin = "loop-dev.stage.mozaws.net";
+        manifest.name = "Hello Dev";
+        manifest.locales.es.name = "Hello Dev";
+        manifest.locales["en-US"].name = "Hello Dev";
         break;
       case "production":
         appOrigin = "loop.services.mozilla.com";
@@ -275,6 +296,9 @@ module.exports = function(grunt) {
         var serverUrl = url.parse(loopServer);
         if (serverUrl.hostname != null){
           appOrigin = serverUrl.hostname;
+          manifest.name = "Hello " + hostname;
+          manifest.locales.es.name = "Hello " + hostname;
+          JSONObj['manifest.locales.en-US.name'] = "Hello " + hostname;
           if (serverUrl.port != null) {
             port = ":" + serverUrl.port;
           }
@@ -339,72 +363,51 @@ module.exports = function(grunt) {
     grunt.file.write(manifestFile, JSON.stringify(manifest, null, 2));
   });
 
+  grunt.registerTask('killbuild', 'Kill app, build and launch', [
+    'ffosstop:app',
+    'buildDevelopment',
+    'ffoslaunch:app'
+  ]);
 
   grunt.registerTask('build', 'Build app for dev', [
     'bower:install',
     'copy:build',
-    'saveRevision',
     'configure',
+    'getVersion',
     'compress:release',
     'ffospush:app'
   ]);
 
   grunt.registerTask('buildProduction', 'Build app for dev', [
-    'bower:install',
-    'copy:build',
     'configureProduction',
-    'saveRevision',
-    'configure',
-    'compress:release',
-    'ffospush:app'
+    'build'
   ]);
 
   grunt.registerTask('buildDevelopment', 'Build app for dev', [
-    'bower:install',
-    'copy:build',
     'configureDevelopment',
-    'saveRevision',
-    'configure',
-    'compress:release',
-    'ffospush:app'
+    'build'
   ]);
 
   grunt.registerTask('release', 'Build app for release', [
     'clean',
     'copy:build',
     'bower:install',
-    'saveRevision',
-    'test',
     'configure',
+    'getVersion',
+    'test',
     'compress:release',
     'copy:deliver',
     'embed-in-gaia'
   ]);
 
   grunt.registerTask('releaseProduction', 'Build app for release', [
-    'clean',
-    'copy:build',
     'configureProduction',
-    'bower:install',
-    'saveRevision',
-    'test',
-    'configure',
-    'compress:release',
-    'copy:deliver',
-    'embed-in-gaia'
+    'release'
   ]);
 
   grunt.registerTask('releaseDevelopment', 'Build app for release', [
-    'clean',
-    'copy:build',
     'configureDevelopment',
-    'bower:install',
-    'saveRevision',
-    'test',
-    'configure',
-    'compress:release',
-    'copy:deliver',
-    'embed-in-gaia'
+    'release'
   ]);
 
   grunt.registerTask('default', ['build']);
